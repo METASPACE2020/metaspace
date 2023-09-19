@@ -239,6 +239,7 @@ def generate_ds_config(
     chem_mods=None,
     compute_unused_metrics=None,
     scoring_model=None,
+    old_moldb_ids=None,
 ) -> DSConfig:
     # The kwarg names should match FLAT_DS_CONFIG_KEYS
 
@@ -249,6 +250,7 @@ def generate_ds_config(
 
     return {
         'database_ids': moldb_ids,
+        'old_moldb_ids': old_moldb_ids,
         'analysis_version': analysis_version,
         'isotope_generation': {
             'adducts': adducts or default_adducts,
@@ -284,9 +286,12 @@ def update_ds_config(old_config, metadata, **kwargs):
     isotope_generation = old_config.get('isotope_generation', {})
     fdr = old_config.get('fdr', {})
     image_generation = old_config.get('image_generation', {})
+    current_database_ids = old_config.get('database_ids')
+    kwargs['old_moldb_ids'] = current_database_ids
+
     old_vals = {
         'analysis_version': old_config.get('analysis_version'),
-        'moldb_ids': old_config.get('database_ids'),
+        'moldb_ids': current_database_ids,
         'adducts': isotope_generation.get('adducts'),
         'n_peaks': isotope_generation.get('n_peaks'),
         'neutral_losses': isotope_generation.get('neutral_losses'),

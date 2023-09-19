@@ -110,6 +110,9 @@ def get_fdr_bundles(
     logger.debug(f'Making {len(db_data_cobjs)} FDR bundles')
     bundles: Dict[int, FdrDiagnosticBundle] = {}
     for db_data in iter_cobjs_with_prefetch(storage, db_data_cobjs):
+        if db_data['id'] not in db_id_to_job_id:
+            continue
+
         fdr = db_data['fdr']
         formula_map_df = (
             db_data['formula_map_df'].drop(columns=['target']).drop_duplicates(ignore_index=True)
@@ -121,13 +124,19 @@ def get_fdr_bundles(
             left_index=True,
             right_index=True,
         )
-        job_id = db_id_to_job_id[db_data['id']]
-        bundle = FdrDiagnosticBundle(
-            decoy_sample_size=fdr.decoy_sample_size,
-            decoy_map_df=fdr.td_df,
-            formula_map_df=formula_map_df,
-            metrics_df=metrics_df,
-        )
-        bundles[job_id] = bundle
+        logger.debug(f'Making {db_data} FDR bundles')
+        logger.debug(f'db_id_to_job_id {db_id_to_job_id} FDR bundles')
+
+        try:
+            job_id = db_id_to_job_id[db_data['id']]
+            bundle = FdrDiagnosticBundle(
+                decoy_sample_size=fdr.decoy_sample_size,
+                decoy_map_df=fdr.td_df,
+                formula_map_df=formula_map_df,
+                metrics_df=metrics_df,
+            )
+            bundles[job_id] = bundle
+        except:
+            logger.debug(f'Error making {db_data} FDR bundles')
 
     return bundles

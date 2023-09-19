@@ -318,25 +318,34 @@ class ServerAnnotationJob:
         self.ds_size_hash = None
 
     def run(self, **kwargs):
-        # TODO: Only run missing moldbs
-        del_jobs(self.ds)
         moldb_to_job_map = {}
         moldb_to_be_removed = []
+        database_ids = self.ds.config['database_ids'] or []
+        old_moldb_ids = self.ds.config['old_moldb_ids'] or []
+        moldb_to_be_processed = list(set(database_ids) - set(old_moldb_ids))
 
+        # delete old jobs
+        del_jobs(self.ds, moldb_to_be_processed)
+
+        # Check if the database_ids are valid
         for moldb_id in self.ds.config['database_ids']:
             try:
                 molecular_db.find_by_id(moldb_id)
-                moldb_to_job_map[moldb_id] = insert_running_job(self.ds.id, moldb_id)
+                if moldb_id in moldb_to_be_processed:
+                    moldb_to_job_map[moldb_id] = insert_running_job(self.ds.id, moldb_id)
             except Exception:  # db does not exist, continue to next
                 moldb_to_be_removed.append(moldb_id)
                 logger.warning(f'Removed db {moldb_id} from {self.ds.id}')
                 continue
 
         if len(moldb_to_be_removed) > 0:  # remove non-existing moldbs from ds
+            del_jobs(self.ds, moldb_to_be_removed)
             self.ds.config['database_ids'] = [
                 x for x in self.ds.config['database_ids'] if x not in moldb_to_be_removed
             ]
             self.ds.save(self.db)
+
+        logger.debug(f'Running annotation for {moldb_to_be_processed}')
 
         self.perf.add_extra_data(moldb_ids=list(moldb_to_job_map.keys()))
 
