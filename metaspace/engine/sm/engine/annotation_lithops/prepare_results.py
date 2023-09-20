@@ -127,16 +127,13 @@ def get_fdr_bundles(
         logger.debug(f'Making {db_data} FDR bundles')
         logger.debug(f'db_id_to_job_id {db_id_to_job_id} FDR bundles')
 
-        try:
-            job_id = db_id_to_job_id[db_data['id']]
-            bundle = FdrDiagnosticBundle(
-                decoy_sample_size=fdr.decoy_sample_size,
-                decoy_map_df=fdr.td_df,
-                formula_map_df=formula_map_df,
-                metrics_df=metrics_df,
-            )
-            bundles[job_id] = bundle
-        except:
-            logger.debug(f'Error making {db_data} FDR bundles')
+        job_id = db_id_to_job_id[db_data['id']]
+        bundle = FdrDiagnosticBundle(
+            decoy_sample_size=fdr.decoy_sample_size,
+            decoy_map_df=fdr.td_df,
+            formula_map_df=formula_map_df,
+            metrics_df=metrics_df,
+        )
+        bundles[job_id] = bundle
 
     return bundles
