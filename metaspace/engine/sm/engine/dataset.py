@@ -251,6 +251,7 @@ def generate_ds_config(
     return {
         'database_ids': moldb_ids,
         'old_moldb_ids': old_moldb_ids,
+        'ds_hash': None,
         'analysis_version': analysis_version,
         'isotope_generation': {
             'adducts': adducts or default_adducts,

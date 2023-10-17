@@ -42,10 +42,12 @@ class CentroidsCacheEntry:
             **ds_hash_params,  # type: ignore # https://github.com/python/mypy/issues/4122
             # Include the `targeted` value of databases so that a new cache entry is made if
             # someone manually changes that field
-            'databases': [(moldb['id'], moldb['targeted']) for moldb in moldbs],
+            # 'databases': [(moldb['id'], moldb['targeted']) for moldb in moldbs],
         }
         # Remove database_ids as it may be in a different order to moldbs
         del self.ds_config['database_ids']
+        del self.ds_config['ds_hash']
+        del self.ds_config['old_moldb_ids']
 
         self.ds_hash = jsonhash(self.ds_config)
 

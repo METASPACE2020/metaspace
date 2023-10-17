@@ -318,20 +318,35 @@ class ServerAnnotationJob:
         self.ds_size_hash = None
 
     def run(self, **kwargs):
+        aux_config = self.ds.config.copy()
+        del aux_config['database_ids']
+        del aux_config['old_moldb_ids']
+        del aux_config['ds_hash']
+        aux_hash = jsonhash(aux_config)
+        changed_base_config = aux_hash != self.ds.config['ds_hash']
+
+
         moldb_to_job_map = {}
         moldb_to_be_removed = []
         database_ids = self.ds.config['database_ids'] or []
         old_moldb_ids = self.ds.config['old_moldb_ids'] or []
-        moldb_to_be_processed = list(set(database_ids) - set(old_moldb_ids))
+        moldb_to_be_processed = database_ids if changed_base_config else list(set(database_ids) - set(old_moldb_ids))
+
+        if changed_base_config:
+            self.ds.config['ds_hash'] = aux_hash
+            self.ds.save(self.db)
 
         # delete old jobs
-        del_jobs(self.ds, moldb_to_be_processed)
+        if changed_base_config:
+            del_jobs(self.ds)
 
         # Check if the database_ids are valid
         for moldb_id in self.ds.config['database_ids']:
             try:
                 molecular_db.find_by_id(moldb_id)
                 if moldb_id in moldb_to_be_processed:
+                    if not changed_base_config: # delete old job if db exists
+                        del_jobs(self.ds, [moldb_id])
                     moldb_to_job_map[moldb_id] = insert_running_job(self.ds.id, moldb_id)
             except Exception:  # db does not exist, continue to next
                 moldb_to_be_removed.append(moldb_id)
