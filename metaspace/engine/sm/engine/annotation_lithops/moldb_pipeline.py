@@ -42,7 +42,7 @@ class CentroidsCacheEntry:
             **ds_hash_params,  # type: ignore # https://github.com/python/mypy/issues/4122
             # Include the `targeted` value of databases so that a new cache entry is made if
             # someone manually changes that field
-            # 'databases': [(moldb['id'], moldb['targeted']) for moldb in moldbs],
+            'databases': [(moldb['id'], moldb['targeted']) for moldb in moldbs],
         }
         # Remove database_ids as it may be in a different order to moldbs
         del self.ds_config['database_ids']
@@ -117,31 +117,41 @@ def get_moldb_centroids(
     use_cache=True,
     use_db_mutex=True,
 ):
-    moldb_cache = CentroidsCacheEntry(executor, sm_storage, ds_config, moldbs)
+    db_data_cobjs_concat = []
+    peaks_cobjs_concat = []
 
-    with ExitStack() as stack:
-        if use_db_mutex:
-            stack.enter_context(moldb_cache.lock())
+    for moldb in moldbs:
+        moldb_cache = CentroidsCacheEntry(executor, sm_storage, ds_config, [moldb])
 
-        if use_cache:
-            cached_val = moldb_cache.load()
-        else:
-            cached_val = None
-            moldb_cache.clear()
+        with ExitStack() as stack:
+            if use_db_mutex:
+                stack.enter_context(moldb_cache.lock())
 
-        if cached_val:
-            db_data_cobjs, peaks_cobjs = cached_val
-            logger.info(
-                f'Loaded {len(db_data_cobjs)} DBs, {len(peaks_cobjs)} peak segms from cache'
-            )
-        else:
-            formula_cobjs, db_data_cobjs = build_moldb(executor, ds_config, moldbs)
-            isocalc_wrapper = IsocalcWrapper(ds_config)
-            peaks_cobjs = calculate_centroids(executor, formula_cobjs, isocalc_wrapper)
-            if debug_validate:
-                validate_centroids(executor, peaks_cobjs)
+            if use_cache:
+                cached_val = moldb_cache.load()
+            else:
+                cached_val = None
+                moldb_cache.clear()
 
-            moldb_cache.save(db_data_cobjs, peaks_cobjs)
-            logger.info(f'Saved {len(db_data_cobjs)} DBs, {len(peaks_cobjs)} peak segms to cache')
+            if cached_val:
+                db_data_cobjs, peaks_cobjs = cached_val
+                logger.info(
+                    f'Loaded {len(db_data_cobjs)} DBs, {len(peaks_cobjs)} peak segms from cache'
+                )
+            else:
+                formula_cobjs, db_data_cobjs = build_moldb(executor, ds_config, moldbs)
+                isocalc_wrapper = IsocalcWrapper(ds_config)
+                peaks_cobjs = calculate_centroids(executor, formula_cobjs, isocalc_wrapper)
+                if debug_validate:
+                    validate_centroids(executor, peaks_cobjs)
 
-    return db_data_cobjs, peaks_cobjs
+                moldb_cache.save(db_data_cobjs, peaks_cobjs)
+                logger.info(f'Saved {len(db_data_cobjs)} DBs, {len(peaks_cobjs)} peak segms to cache')
+
+        logger.info(f'Loading peaks {moldb}')
+        peaks_cobjs_concat = peaks_cobjs_concat + peaks_cobjs
+        db_data_cobjs_concat = db_data_cobjs_concat + db_data_cobjs
+
+    logger.info(f'Returning merged {len(db_data_cobjs_concat)} DBs, {len(peaks_cobjs_concat)} peak segms to cache')
+
+    return db_data_cobjs_concat, peaks_cobjs_concat

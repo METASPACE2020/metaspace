@@ -360,6 +360,9 @@ class ServerAnnotationJob:
             ]
             self.ds.save(self.db)
 
+        logger.debug(f'Old databases {old_moldb_ids}')
+        logger.debug(f'New databases {database_ids}')
+        logger.debug(f'Changed base config {changed_base_config}')
         logger.debug(f'Running annotation for {moldb_to_be_processed}')
 
         self.perf.add_extra_data(moldb_ids=list(moldb_to_job_map.keys()))
