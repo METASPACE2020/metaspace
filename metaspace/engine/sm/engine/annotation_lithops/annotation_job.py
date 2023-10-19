@@ -332,7 +332,12 @@ class ServerAnnotationJob:
         old_moldb_ids = self.ds.config['old_moldb_ids'] or []
         moldb_to_be_processed = database_ids if changed_base_config else list(set(database_ids) - set(old_moldb_ids))
 
-        if changed_base_config:
+        logger.debug(f'Hash {aux_hash}')
+        logger.debug(f'Old hash {self.ds.config["ds_hash"]}')
+        logger.info(f'Hash {aux_hash}')
+        logger.info(f'Old hash {self.ds.config["ds_hash"]}')
+
+        if changed_base_config or not self.ds.config['ds_hash']:
             self.ds.config['ds_hash'] = aux_hash
             self.ds.save(self.db)
 

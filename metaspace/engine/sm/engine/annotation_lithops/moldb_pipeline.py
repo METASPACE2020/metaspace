@@ -55,6 +55,7 @@ class CentroidsCacheEntry:
         self.storage = executor.storage
         self.bucket, raw_prefix = sm_storage['centroids']
         self.prefix = f"{raw_prefix}/{self.ds_hash}"
+        logger.info(f'Prefix {self.prefix}')
         self.config_key = f'{self.prefix}/ds_config.json'
         self.meta_key = f'{self.prefix}/meta'
 
