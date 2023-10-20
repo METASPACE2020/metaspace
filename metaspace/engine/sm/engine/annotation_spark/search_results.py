@@ -55,19 +55,26 @@ class SearchResults:
             metr_json = numpy_json_dumps({m: row[m] for m in stats_cols})
             if row.formula_i not in ion_image_ids:
                 logger.debug(f'Missing "formula_i": {row}, {ion_image_ids}')
-            image_ids = ion_image_ids[row.formula_i]
-            yield (
-                job_id,
-                row.formula,
-                row.chem_mod,
-                row.neutral_loss,
-                row.adduct,
-                float(row.msm),
-                float(row.fdr),
-                metr_json,
-                image_ids,
-                ion_mapping[row.formula, row.chem_mod, row.neutral_loss, row.adduct],
-            )
+            try:  # TODO: remove try/except and check why formula_i does not exists in some runs
+                image_ids = ion_image_ids[row.formula_i]
+                if image_ids is None:
+                    logger.warning(f"Key {row.formula_i} not found in ion_image_ids!")
+                    continue  # or some other appropriate action
+
+                yield (
+                    job_id,
+                    row.formula,
+                    row.chem_mod,
+                    row.neutral_loss,
+                    row.adduct,
+                    float(row.msm),
+                    float(row.fdr),
+                    metr_json,
+                    image_ids,
+                    ion_mapping[row.formula, row.chem_mod, row.neutral_loss, row.adduct],
+                )
+            except:
+                continue
 
     def store_ion_metrics(self, ion_metrics_df, ion_image_ids, db):
         """Store ion metrics and iso image ids in the database."""
@@ -109,11 +116,11 @@ class SearchResults:
         return dict(ion_images_rdd.mapPartitions(generate_png_and_post).collect())
 
     def store(
-        self,
-        metrics_df: pd.DataFrame,
-        formula_images_rdd: pyspark.RDD,
-        alpha_channel: np.ndarray,
-        db: DB,
+            self,
+            metrics_df: pd.DataFrame,
+            formula_images_rdd: pyspark.RDD,
+            alpha_channel: np.ndarray,
+            db: DB,
     ):
         """Store ion metrics and iso images.
 
