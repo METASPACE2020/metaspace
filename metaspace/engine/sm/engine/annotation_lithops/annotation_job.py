@@ -318,7 +318,7 @@ class ServerAnnotationJob:
         self.ds_size_hash = None
 
     def run(self, **kwargs):
-        logger.debug(f'Original {self.ds.config["ds_hash"]}')
+        logger.info(f'Original {self.ds.config["ds_hash"]}')
 
         aux_config = self.ds.config.copy()
         del aux_config['database_ids']
@@ -334,8 +334,6 @@ class ServerAnnotationJob:
         old_moldb_ids = self.ds.config['old_moldb_ids'] or []
         moldb_to_be_processed = database_ids if changed_base_config else list(set(database_ids) - set(old_moldb_ids))
 
-        logger.debug(f'Hash {aux_hash}')
-        logger.debug(f'Old hash {self.ds.config["ds_hash"]}')
         logger.info(f'Hash {aux_hash}')
         logger.info(f'Old hash {self.ds.config["ds_hash"]}')
 
@@ -367,10 +365,10 @@ class ServerAnnotationJob:
             ]
             self.ds.save(self.db)
 
-        logger.debug(f'Old databases {old_moldb_ids}')
-        logger.debug(f'New databases {database_ids}')
-        logger.debug(f'Changed base config {changed_base_config}')
-        logger.debug(f'Running annotation for {moldb_to_be_processed}')
+        logger.info(f'Old databases {old_moldb_ids}')
+        logger.info(f'New databases {database_ids}')
+        logger.info(f'Changed base config {changed_base_config}')
+        logger.info(f'Running annotation for {moldb_to_be_processed}')
 
         self.perf.add_extra_data(moldb_ids=list(moldb_to_job_map.keys()))
 
@@ -407,7 +405,7 @@ class ServerAnnotationJob:
             delete_ds_enrichments(self.ds.id, self.db)
 
             for moldb_id, job_id in moldb_to_job_map.items():
-                logger.debug(f'Storing results for moldb {moldb_id}')
+                logger.info(f'Storing results for moldb {moldb_id}')
                 results_df = self.results_dfs[moldb_id]
 
                 formula_image_ids = self.db_formula_image_ids.get(moldb_id, {})
