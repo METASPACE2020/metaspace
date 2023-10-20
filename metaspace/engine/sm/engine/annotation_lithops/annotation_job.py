@@ -318,6 +318,8 @@ class ServerAnnotationJob:
         self.ds_size_hash = None
 
     def run(self, **kwargs):
+        logger.debug(f'Original {self.ds.config["ds_hash"]}')
+
         aux_config = self.ds.config.copy()
         del aux_config['database_ids']
         del aux_config['old_moldb_ids']
