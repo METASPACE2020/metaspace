@@ -140,7 +140,7 @@ def get_moldb_centroids(
                     f'Loaded {len(db_data_cobjs)} DBs, {len(peaks_cobjs)} peak segms from cache'
                 )
             else:
-                formula_cobjs, db_data_cobjs = build_moldb(executor, ds_config, moldbs)
+                formula_cobjs, db_data_cobjs = build_moldb(executor, ds_config, [moldb])
                 isocalc_wrapper = IsocalcWrapper(ds_config)
                 peaks_cobjs = calculate_centroids(executor, formula_cobjs, isocalc_wrapper)
                 if debug_validate:

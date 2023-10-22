@@ -37,6 +37,7 @@ TEST_DS_CONFIG = {
     "fdr": {"decoy_sample_size": 20, "scoring_model": None},
     "database_ids": [0],
     "old_moldb_ids": None,
+    "ds_hash": None,
 }
 
 

@@ -318,7 +318,7 @@ class ServerAnnotationJob:
         self.ds_size_hash = None
 
     def run(self, **kwargs):
-        logger.info(f'Original {self.ds.config["ds_hash"]}')
+        logger.info(f'Original {self.ds.config["ds_hash"] if "ds_hash" in self.ds.config else None}')
 
         aux_config = self.ds.config.copy()
         del aux_config['database_ids']
@@ -335,7 +335,7 @@ class ServerAnnotationJob:
         moldb_to_be_processed = database_ids if changed_base_config else list(set(database_ids) - set(old_moldb_ids))
 
         logger.info(f'Hash {aux_hash}')
-        logger.info(f'Old hash {self.ds.config["ds_hash"]}')
+        logger.info(f'Old hash {self.ds.config["ds_hash"] if "ds_hash" in self.ds.config else None}')
 
         if changed_base_config or not self.ds.config['ds_hash']:
             self.ds.config['ds_hash'] = aux_hash
