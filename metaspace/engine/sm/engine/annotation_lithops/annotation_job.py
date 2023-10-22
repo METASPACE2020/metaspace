@@ -34,7 +34,6 @@ from sm.engine.util import split_s3_path, split_cos_path
 from sm.engine.utils.db_mutex import DBMutex
 from sm.engine.utils.perf_profile import Profiler
 
-
 logger = logging.getLogger('engine')
 
 
@@ -58,7 +57,7 @@ def _choose_cos_location(src_path, sm_storage, storage_type):
 
 
 def _upload_if_needed(
-    src_path, storage, sm_storage, storage_type, s3_client=None, use_db_mutex=True
+        src_path, storage, sm_storage, storage_type, s3_client=None, use_db_mutex=True
 ):
     """
     Uploads the object from `src_path` if it doesn't already exist in its translated COS path.
@@ -102,7 +101,7 @@ def _upload_if_needed(
 
 def _upload_imzmls_from_prefix_if_needed(src_path, storage, sm_storage, s3_client=None):
     if src_path.startswith('cos://'):
-        bucket, prefix = src_path[len('cos://') :].split('/', maxsplit=1)
+        bucket, prefix = src_path[len('cos://'):].split('/', maxsplit=1)
         keys = [f'cos://{bucket}/{key}' for key in storage.list_keys(bucket, prefix)]
     elif src_path.startswith('s3a://'):
         bucket, prefix = split_s3_path(src_path)
@@ -185,15 +184,15 @@ class LocalAnnotationJob:
     """
 
     def __init__(
-        self,
-        imzml_file: str,
-        ibd_file: str,
-        moldb_files: Union[List[int], List[str]],
-        ds_config: DSConfig,
-        sm_config: Optional[Dict] = None,
-        use_cache=True,
-        out_dir: Optional[str] = None,
-        executor: Optional[Executor] = None,
+            self,
+            imzml_file: str,
+            ibd_file: str,
+            moldb_files: Union[List[int], List[str]],
+            ds_config: DSConfig,
+            sm_config: Optional[Dict] = None,
+            use_cache=True,
+            out_dir: Optional[str] = None,
+            executor: Optional[Executor] = None,
     ):
         sm_config = sm_config or SMConfig.get_conf()
         self.storage = Storage(config=sm_config['lithops'])
@@ -240,10 +239,10 @@ class LocalAnnotationJob:
             all_results = pd.concat(list(results_dfs.values()))
             all_results = all_results[~all_results.index.duplicated()]
             image_names = (
-                all_results.formula
-                + all_results.chem_mod.fillna('')
-                + all_results.neutral_loss.fillna('')
-                + all_results.adduct
+                    all_results.formula
+                    + all_results.chem_mod.fillna('')
+                    + all_results.neutral_loss.fillna('')
+                    + all_results.adduct
             )
 
             self.out_dir.mkdir(exist_ok=True)
@@ -263,14 +262,14 @@ class ServerAnnotationJob:
     """
 
     def __init__(
-        self,
-        executor: Executor,
-        ds: Dataset,
-        perf: Profiler,
-        sm_config: Optional[Dict] = None,
-        use_cache=False,
-        store_images=True,
-        perform_enrichment: bool = False,
+            self,
+            executor: Executor,
+            ds: Dataset,
+            perf: Profiler,
+            sm_config: Optional[Dict] = None,
+            use_cache=False,
+            store_images=True,
+            perform_enrichment: bool = False,
     ):
         """
         Args
@@ -327,7 +326,6 @@ class ServerAnnotationJob:
         aux_hash = jsonhash(aux_config)
         changed_base_config = aux_hash != self.ds.config['ds_hash']
 
-
         moldb_to_job_map = {}
         moldb_to_be_removed = []
         database_ids = self.ds.config['database_ids'] or []
@@ -350,7 +348,7 @@ class ServerAnnotationJob:
             try:
                 molecular_db.find_by_id(moldb_id)
                 if moldb_id in moldb_to_be_processed:
-                    if not changed_base_config: # delete old job if db exists
+                    if not changed_base_config:  # delete old job if db exists
                         del_jobs(self.ds, [moldb_id])
                     moldb_to_job_map[moldb_id] = insert_running_job(self.ds.id, moldb_id)
             except Exception:  # db does not exist, continue to next
@@ -359,7 +357,7 @@ class ServerAnnotationJob:
                 continue
 
         if len(moldb_to_be_removed) > 0:  # remove non-existing moldbs from ds
-            del_jobs(self.ds, moldb_to_be_removed)
+            # del_jobs(self.ds, moldb_to_be_removed)
             self.ds.config['database_ids'] = [
                 x for x in self.ds.config['database_ids'] if x not in moldb_to_be_removed
             ]
@@ -369,6 +367,7 @@ class ServerAnnotationJob:
         logger.info(f'New databases {database_ids}')
         logger.info(f'Changed base config {changed_base_config}')
         logger.info(f'Running annotation for {moldb_to_be_processed}')
+        logger.info(f'moldb_to_job_map {moldb_to_job_map.keys()}')
 
         self.perf.add_extra_data(moldb_ids=list(moldb_to_job_map.keys()))
 
@@ -405,7 +404,7 @@ class ServerAnnotationJob:
             delete_ds_enrichments(self.ds.id, self.db)
 
             for moldb_id, job_id in moldb_to_job_map.items():
-                logger.info(f'Storing results for moldb {moldb_id}')
+                logger.info(f'Storing results for moldb {moldb_id} and job {job_id}')
                 results_df = self.results_dfs[moldb_id]
 
                 formula_image_ids = self.db_formula_image_ids.get(moldb_id, {})
@@ -421,10 +420,10 @@ class ServerAnnotationJob:
                 add_diagnostics(extract_job_diagnostics(self.ds.id, job_id, fdr_bundles[job_id]))
 
                 if (
-                    self.perform_enrichment
-                    and self.enrichment_data
-                    and moldb_id in self.enrichment_data.keys()
-                    and not self.enrichment_data[moldb_id].empty
+                        self.perform_enrichment
+                        and self.enrichment_data
+                        and moldb_id in self.enrichment_data.keys()
+                        and not self.enrichment_data[moldb_id].empty
                 ):
                     # get annotations ids to be used later on to speed up enrichment routes
                     annot_ids = search_results.get_annotations_ids(self.db)
