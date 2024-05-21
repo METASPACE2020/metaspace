@@ -1,16 +1,17 @@
-import base64
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
 
 from PIL import Image
 from requests import post, get
 import numpy as np
 
+from off_sample_orchestrator.orchestrator import Orchestrator, Job
+
 from sm.engine.errors import SMError
 from sm.engine import image_storage
 from sm.engine.utils.retry_on_exception import retry_on_exception
+
 
 logger = logging.getLogger('update-daemon')
 
@@ -67,35 +68,51 @@ def call_api(url='', batch_id=None, doc=None):
     raise SMError(resp.content or resp)
 
 
-def make_classify_images(api_endpoint, ds_id):
-    def classify(chunk):
+def extract_predictions(data):
+    predictions_array = []
+
+    # Check if the key 'lithops_results' exists in the output data
+    if 'output' in data and 'lithops_results' in data['output']:
+        # Iterate over each result in 'lithops_results'
+        for result in data['output']['lithops_results']:
+            if 'body' in result and 'predictions' in result['body']:
+                predictions_dict = result['body']['predictions']
+                # Convert the dictionary into a list of prediction objects with 'id' keys
+                for _, info in predictions_dict.items():
+                    predictions_array.append({"label": info["label"], "prob": info["prob"]})
+
+
+def make_classify_images(ds_id, services_config):
+    def classify(items):
         batch_id = str(uuid4())
-        logger.info(
-            f'Classifying chunk of {len(chunk)} images. ds_id is {ds_id}, batch_id is {batch_id}'
+        logger.info(f'Classifying chunk of {len(items)} images. ds_id is {ds_id}.')
+
+        images_doc = {
+            'inputs': [
+                image_storage.get_image_url(image_storage.ISO, ds_id, img_id) for img_id in items
+            ]
+        }
+        images_doc['job_name'] = f'{ds_id} {batch_id}'
+        lambda_fexec_args = {
+            'runtime': services_config['runtime'],
+            'runtime_memory': 3008,
+            'config': services_config['off_sample_config'],
+        }
+        orchestrator = Orchestrator(
+            fexec_args=lambda_fexec_args, ec2_host_machine=False, initialize=False
         )
-
-        base64_images = []
-        for img_id in chunk:
-            img_bytes = image_storage.get_image(image_storage.ISO, ds_id, img_id)
-            img_base64 = base64.b64encode(img_bytes).decode()
-            base64_images.append(img_base64)
-
-        images_doc = base64_images_to_doc(base64_images)
-        images_doc['ds_id'] = ds_id
-        images_doc['batch_id'] = batch_id
-        pred_doc = call_api(api_endpoint + '/predict', batch_id=batch_id, doc=images_doc)
-        logger.info(f'Off-sample classification was finish. batch_id is {batch_id}')
-        return pred_doc['predictions']
-
-    def classify_items(items):
+        job = Job(
+            images_doc['inputs'],
+            images_doc['job_name'],
+            orchestrator_backend="aws_lambda",
+            dynamic_split=False,
+        )
+        result = orchestrator.run_job(job)
         logger.info(f'Off-sample classification of {len(items)} images')
-        with ThreadPoolExecutor(8) as pool:
-            chunk_it = make_chunk_gen(items, chunk_size=32)
-            preds_list = pool.map(classify, chunk_it)
-        image_predictions = [p for preds in preds_list for p in preds]
-        return image_predictions
 
-    return classify_items
+        return extract_predictions(result)
+
+    return classify
 
 
 def classify_dataset_ion_images(db, ds, services_config, overwrite_existing=False):
@@ -107,12 +124,10 @@ def classify_dataset_ion_images(db, ds, services_config, overwrite_existing=Fals
         services_config (dict): configuration for services
         overwrite_existing (bool): whether to overwrite existing image classes
     """
-    off_sample_api_endpoint = services_config['off_sample']
-
     annotations = db.select_with_fields(SEL_ION_IMAGES, (ds.id, overwrite_existing))
     image_ids = [a['img_id'] for a in annotations]
 
-    classify_images = make_classify_images(off_sample_api_endpoint, ds.id)
+    classify_images = make_classify_images(ds.id, services_config)
     image_predictions = classify_images(image_ids)
 
     rows = [(ann['ann_id'], json.dumps(pred)) for ann, pred in zip(annotations, image_predictions)]

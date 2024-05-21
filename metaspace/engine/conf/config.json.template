@@ -25,6 +25,30 @@
     "img_service_url": "{{ sm_img_service_url }}",
     "img_service_public_url": "{{ web_public_url }}",
     "off_sample": "{{ off_sample_api_endpoint }}",
+        "off_sample_config":{
+        "runtime": "",
+        "lithopserve": {
+            "backend": "aws_lambda",
+            "storage": "aws_s3",
+            "log_level": "DEBUG"
+        },
+        "aws": {
+            "access_key_id": "",
+            "secret_access_key": "",
+            "session_token": ""
+        },
+        "aws_lambda": {
+            "execution_role": "",
+            "region_name": "",
+            "invoke_pool_threads": 64,
+            "runtime_include_function": true,
+            "runtime_timeout": 900
+        },
+        "aws_s3": {
+            "storage_bucket": "",
+            "region_name": ""
+        }
+    },
     "web_app_url": "{{ web_public_url }}",
     "send_email": {{ sm_send_email | to_json }},
     "update_daemon_threads": 4,
