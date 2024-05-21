@@ -69,17 +69,12 @@ def call_api(url='', batch_id=None, doc=None):
 
 
 def extract_predictions(data):
-    predictions_array = []
-
-    # Check if the key 'lithops_results' exists in the output data
-    if 'output' in data and 'lithops_results' in data['output']:
-        # Iterate over each result in 'lithops_results'
-        for result in data['output']['lithops_results']:
-            if 'body' in result and 'predictions' in result['body']:
-                predictions_dict = result['body']['predictions']
-                # Convert the dictionary into a list of prediction objects with 'id' keys
-                for _, info in predictions_dict.items():
-                    predictions_array.append({"label": info["label"], "prob": info["prob"]})
+    flattened_data = []
+    for block in data['output']['lithops_results']:
+        predictions = block["body"]["predictions"]
+        for _, value in predictions.items():
+            flattened_data.append({"label": value["label"], "prob": value["prob"]})
+    return flattened_data
 
 
 def make_classify_images(ds_id, services_config):
@@ -94,7 +89,7 @@ def make_classify_images(ds_id, services_config):
         }
         images_doc['job_name'] = f'{ds_id} {batch_id}'
         lambda_fexec_args = {
-            'runtime': services_config['runtime'],
+            'runtime': services_config['off_sample_config']['runtime'],
             'runtime_memory': 3008,
             'config': services_config['off_sample_config'],
         }
@@ -127,8 +122,8 @@ def classify_dataset_ion_images(db, ds, services_config, overwrite_existing=Fals
     annotations = db.select_with_fields(SEL_ION_IMAGES, (ds.id, overwrite_existing))
     image_ids = [a['img_id'] for a in annotations]
 
-    classify_images = make_classify_images(ds.id, services_config)
-    image_predictions = classify_images(image_ids)
+    classify = make_classify_images(ds.id, services_config)
+    image_predictions = classify(image_ids)
 
     rows = [(ann['ann_id'], json.dumps(pred)) for ann, pred in zip(annotations, image_predictions)]
     db.alter_many(UPD_OFF_SAMPLE, rows)
